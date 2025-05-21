@@ -1,0 +1,22 @@
+# Use Homebrew’s clang/gcc
+CC       := clang
+SDL2_CFG := /opt/homebrew/bin/sdl2-config
+CFLAGS   := $(shell $(SDL2_CFG) --cflags)
+LDFLAGS  := $(shell $(SDL2_CFG) --libs)
+
+SRC    := dash.c
+OBJ    := $(SRC:.c=.o)
+TARGET := dash
+
+.PHONY: all clean
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJ) $(TARGET)
