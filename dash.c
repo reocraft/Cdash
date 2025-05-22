@@ -1,16 +1,12 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdbool.h>
 
 const int WINDOW_WIDTH  = 800;
 const int WINDOW_HEIGHT = 600;
 const int SQUARE_SIZE   = 50;
 const int SPEED         = 5;
-
-typedef struct vec {
-  float x;
-  float y;
-} vec_t;
 
 int rng (int min, int max) {
   int random = rand();
@@ -22,7 +18,17 @@ void respawn (int* xpos, int* ypos) {
   *ypos = rng(0, 4) * -100;
 }
 
+void collision (int cube_x, int cube_y, int tube_x, int tube_y, bool* collided) {
+  if (cube_x - tube_x < SQUARE_SIZE && cube_x - tube_x > -SQUARE_SIZE) {
+    if (cube_y - tube_y > -SQUARE_SIZE && cube_y - tube_y < 400) {
+      *collided = true;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
+
+  bool collided = false;
 
   srand(time(NULL));
 
@@ -62,32 +68,32 @@ int main(int argc, char *argv[]) {
 
     // Obstacle tubes
     SDL_Rect tube1a = {
-      (WINDOW_WIDTH - SQUARE_SIZE) - 267,
+      (WINDOW_WIDTH - SQUARE_SIZE) + 267,
       -300,
       SQUARE_SIZE, 400
     };
     SDL_Rect tube1b = {
-      (WINDOW_WIDTH - SQUARE_SIZE) - 267,
+      (WINDOW_WIDTH - SQUARE_SIZE) + 267,
       tube1a.y + 600,
       SQUARE_SIZE, 400
     };
     SDL_Rect tube2a = {
-      (WINDOW_WIDTH - SQUARE_SIZE) - 534,
+      (WINDOW_WIDTH - SQUARE_SIZE),
       -150,
       SQUARE_SIZE, 400
     };
     SDL_Rect tube2b = {
-      (WINDOW_WIDTH - SQUARE_SIZE) - 534,
+      (WINDOW_WIDTH - SQUARE_SIZE),
       tube2a.y + 600,
       SQUARE_SIZE, 400
     };
     SDL_Rect tube3a = {
-      (WINDOW_WIDTH - SQUARE_SIZE),
+      (WINDOW_WIDTH - SQUARE_SIZE) + 534,
       0,
       SQUARE_SIZE, 400
     };
     SDL_Rect tube3b = {
-      (WINDOW_WIDTH - SQUARE_SIZE),
+      (WINDOW_WIDTH - SQUARE_SIZE) + 534,
       tube3a.y + 600,
       SQUARE_SIZE, 400
     };
@@ -180,6 +186,17 @@ int main(int argc, char *argv[]) {
           tube3b.y = tube3a.y + 600;
         }
 
+        // Checks for collisions.
+        collision(sq.x, sq.y, tube1a.x, tube1a.y, &collided);
+        collision(sq.x, sq.y, tube1b.x, tube1b.y, &collided);
+        collision(sq.x, sq.y, tube2a.x, tube2a.y, &collided);
+        collision(sq.x, sq.y, tube2b.x, tube2b.y, &collided);
+        collision(sq.x, sq.y, tube3a.x, tube3a.y, &collided);
+        collision(sq.x, sq.y, tube3b.x, tube3b.y, &collided);
+
+        if (collided) {
+          break;
+        }
         
         // render
         SDL_SetRenderDrawColor(ren, 0, 144, 48, 255);  // green background
