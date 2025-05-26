@@ -2,7 +2,7 @@
 CC       := clang
 SDL2_CFG := /opt/homebrew/bin/sdl2-config
 CFLAGS   := $(shell $(SDL2_CFG) --cflags)
-LDFLAGS  := $(shell $(SDL2_CFG) --libs)
+LDFLAGS  := $(shell $(SDL2_CFG) --libs) -lSDL2_ttf
 
 SRC    := dash.c
 OBJ    := $(SRC:.c=.o)

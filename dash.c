@@ -1,4 +1,5 @@
 #include <SDL.h>
+#include <SDL_ttf.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdbool.h>
@@ -36,6 +37,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
         return 1;
     }
+    if (TTF_Init() != 0) {
+      fprintf(stderr, "TTF_Init Error: %s\n", TTF_GetError());
+      SDL_Quit();
+      return 1;
+    }
 
     SDL_Window *win = SDL_CreateWindow(
         "Move the Square", 
@@ -57,6 +63,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "SDL_CreateRenderer Error: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
+    }
+    TTF_Font *font = TTF_OpenFont("/Library/Fonts/Arial Unicode.ttf", 24);
+    if (!font) {
+      fprintf(stderr, "TTF_OpenFont Error: %s\n", TTF_GetError());
+      /* cleanup and exit… */
     }
 
     // sq.x and sq.y keep track of the positions of the square
@@ -98,14 +109,18 @@ int main(int argc, char *argv[]) {
       SQUARE_SIZE, 400
     };
 
-    // MAYBE HAVE LIKE 5 DIFFERENT TUBES IN ROTATION AND WHENEVER IT HITS THE LEFT EDGE AND GOES OFF THE SCREEN,
-    // WE CALL FOR A FUNCTION WHICH RANDOMIZES THE HEIGHT OF THESE TUBES
+    SDL_Surface *surf = TTF_RenderText_Solid(font, "Press space to start the game!", (SDL_Color){255,255,255,255});
+    SDL_Texture *text_tex = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_Rect text_rect = { 10, 10, surf->w, surf->h };
+    SDL_FreeSurface(surf);
 
     // Value to store velocity added when pressing `space`
     float sq_vel = 0;
 
     int frame = 0;
     int running = 1;
+    bool start = false;
+    bool finish = false;
     SDL_Event e;
     while (running) {
         // handle events
@@ -115,22 +130,11 @@ int main(int argc, char *argv[]) {
             }
             else if (e.type == SDL_KEYDOWN) {
                 switch (e.key.keysym.sym) {
-                    case SDLK_w: 
-                      sq.y -= SPEED; 
-                      break;
-                    case SDLK_s: 
-                      sq.y += SPEED; 
-                      break;
-                    case SDLK_a: 
-                      sq.x -= SPEED; 
-                      break;
-                    case SDLK_d: 
-                      sq.x += SPEED; 
-                      break;
                     case SDLK_SPACE:
                       if (sq_vel <= 16.0) {
                         sq_vel += 16.0;
                       };
+                      start = true;
                       break;
                     default: 
                       break;
@@ -138,88 +142,99 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // Gravity like effect of cube falling down
-        sq.y -= sq_vel;
-        sq.y += 5;
-        if (sq_vel > 13) {
-          sq_vel -= 0.5;
-        }
-        else if (sq_vel > 0) {
-          sq_vel -= 1;
+        if (!start && !finish) {
+          SDL_SetRenderDrawColor(ren, 0, 144, 48, 255);  // green background
+          SDL_RenderClear(ren);
+          SDL_RenderCopy(ren, text_tex, NULL, &text_rect); // Render the text
+          SDL_RenderPresent(ren);
         }
 
-        // keep square on-screen
-        if (sq.x < 0) {
-          sq.x = 0;
-        }
-        if (sq.y < 0) {
-          sq.y = 0;
-        } 
-        if (sq.x > WINDOW_WIDTH  - SQUARE_SIZE)
-            sq.x = WINDOW_WIDTH  - SQUARE_SIZE;
-        if (sq.y > WINDOW_HEIGHT - SQUARE_SIZE)
-            sq.y = WINDOW_HEIGHT - SQUARE_SIZE;
+        if (start && !finish) {
+          // Gravity like effect of cube falling down
+          sq.y -= sq_vel;
+          sq.y += 5;
+          if (sq_vel > 13) {
+            sq_vel -= 0.5;
+          }
+          else if (sq_vel > 0) {
+            sq_vel -= 1;
+          }
+
+          // keep square on-screen
+          if (sq.x < 0) {
+            sq.x = 0;
+          }
+          if (sq.y < 0) {
+            sq.y = 0;
+          } 
+          if (sq.x > WINDOW_WIDTH  - SQUARE_SIZE)
+              sq.x = WINDOW_WIDTH  - SQUARE_SIZE;
+          if (sq.y > WINDOW_HEIGHT - SQUARE_SIZE)
+              sq.y = WINDOW_HEIGHT - SQUARE_SIZE;
 
 
-        tube1a.x -= 1.3;
-        tube1b.x -= 1.3;
-        tube2a.x -= 1.3;
-        tube2b.x -= 1.3;
-        tube3a.x -= 1.3;
-        tube3b.x -= 1.3;
+          tube1a.x -= 1.3;
+          tube1b.x -= 1.3;
+          tube2a.x -= 1.3;
+          tube2b.x -= 1.3;
+          tube3a.x -= 1.3;
+          tube3b.x -= 1.3;
 
 
-        // When the tubes go off the screen, respawns a new tube.
-        if (tube1a.x <= 0) {
-          respawn(&tube1a.x, &tube1a.y);
-          tube1b.x = tube1a.x;
-          tube1b.y = tube1a.y + 600;
-        }
-        if (tube2a.x <= 0) {
-          respawn(&tube2a.x, &tube2a.y);
-          tube2b.x = tube2a.x;
-          tube2b.y = tube2a.y + 600;
-        }
-        if (tube3a.x <= 0) {
-          respawn(&tube3a.x, &tube3a.y);
-          tube3b.x = tube3a.x;
-          tube3b.y = tube3a.y + 600;
-        }
+          // When the tubes go off the screen, respawns a new tube.
+          if (tube1a.x <= 0) {
+            respawn(&tube1a.x, &tube1a.y);
+            tube1b.x = tube1a.x;
+            tube1b.y = tube1a.y + 600;
+          }
+          if (tube2a.x <= 0) {
+            respawn(&tube2a.x, &tube2a.y);
+            tube2b.x = tube2a.x;
+            tube2b.y = tube2a.y + 600;
+          }
+          if (tube3a.x <= 0) {
+            respawn(&tube3a.x, &tube3a.y);
+            tube3b.x = tube3a.x;
+            tube3b.y = tube3a.y + 600;
+          }
 
-        // Checks for collisions.
-        collision(sq.x, sq.y, tube1a.x, tube1a.y, &collided);
-        collision(sq.x, sq.y, tube1b.x, tube1b.y, &collided);
-        collision(sq.x, sq.y, tube2a.x, tube2a.y, &collided);
-        collision(sq.x, sq.y, tube2b.x, tube2b.y, &collided);
-        collision(sq.x, sq.y, tube3a.x, tube3a.y, &collided);
-        collision(sq.x, sq.y, tube3b.x, tube3b.y, &collided);
+          // Checks for collisions.
+          collision(sq.x, sq.y, tube1a.x, tube1a.y, &collided);
+          collision(sq.x, sq.y, tube1b.x, tube1b.y, &collided);
+          collision(sq.x, sq.y, tube2a.x, tube2a.y, &collided);
+          collision(sq.x, sq.y, tube2b.x, tube2b.y, &collided);
+          collision(sq.x, sq.y, tube3a.x, tube3a.y, &collided);
+          collision(sq.x, sq.y, tube3b.x, tube3b.y, &collided);
 
-        if (collided) {
-          break;
+          if (collided) {
+            break;
+          }
+          
+          // render
+          SDL_SetRenderDrawColor(ren, 0, 144, 48, 255);  // green background
+          SDL_RenderClear(ren);
+
+          SDL_SetRenderDrawColor(ren, 255, 255, 255, 255); // white square
+          SDL_RenderFillRect(ren, &sq);
+          
+          SDL_SetRenderDrawColor(ren, 255, 255, 0, 255); // yellow tube
+          SDL_RenderFillRect(ren, &tube1a);
+          SDL_RenderFillRect(ren, &tube1b);
+          SDL_RenderFillRect(ren, &tube2a);
+          SDL_RenderFillRect(ren, &tube2b);
+          SDL_RenderFillRect(ren, &tube3a);
+          SDL_RenderFillRect(ren, &tube3b);
+
+          SDL_RenderPresent(ren);
         }
         
-        // render
-        SDL_SetRenderDrawColor(ren, 0, 144, 48, 255);  // green background
-        SDL_RenderClear(ren);
-
-        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255); // white square
-        SDL_RenderFillRect(ren, &sq);
-        
-        SDL_SetRenderDrawColor(ren, 255, 255, 0, 255); // yellow tube
-        SDL_RenderFillRect(ren, &tube1a);
-        SDL_RenderFillRect(ren, &tube1b);
-        SDL_RenderFillRect(ren, &tube2a);
-        SDL_RenderFillRect(ren, &tube2b);
-        SDL_RenderFillRect(ren, &tube3a);
-        SDL_RenderFillRect(ren, &tube3b);
-
-
-
-        SDL_RenderPresent(ren);
     }
 
+    SDL_DestroyTexture(text_tex);
+    TTF_CloseFont(font);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
+    TTF_Quit();
     SDL_Quit();
     return 0;
 }
