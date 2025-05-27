@@ -27,6 +27,27 @@ void collision (int cube_x, int cube_y, int tube_x, int tube_y, bool* collided) 
   }
 }
 
+// Functions that resets tube positions back to start of game.
+void tube_init (int* tube1ax, int* tube1ay, int* tube1bx, int* tube1by, int* tube2ax, int* tube2ay, int* tube2bx, int* tube2by, int* tube3ax, int* tube3ay, int* tube3bx, int* tube3by) {
+    // Obstacle tubes
+    *tube1ax = *tube1bx = WINDOW_WIDTH - SQUARE_SIZE + 267;
+    *tube1ay = -300;
+    *tube1by = *tube1ay + 600;
+
+    *tube2ax = *tube2bx = WINDOW_WIDTH - SQUARE_SIZE;
+    *tube2ay = -150;
+    *tube2by = *tube2ay + 600;
+
+    *tube3ax = *tube3bx = WINDOW_WIDTH - SQUARE_SIZE + 534;
+    *tube3ay = 0;
+    *tube3by = *tube3ay + 600;
+}
+
+void cube_init (int* cubex, int* cubey) {
+  *cubex = (WINDOW_WIDTH -  SQUARE_SIZE) / 4;
+  *cubey = (WINDOW_HEIGHT - SQUARE_SIZE) / 2;
+}
+
 int main(int argc, char *argv[]) {
 
   bool collided = false;
@@ -109,16 +130,23 @@ int main(int argc, char *argv[]) {
       SQUARE_SIZE, 400
     };
 
+
+    // First text that prints in the beginning of the game.
     SDL_Surface *surf = TTF_RenderText_Solid(font, "Press space to start the game!", (SDL_Color){255,255,255,255});
     SDL_Texture *text_tex = SDL_CreateTextureFromSurface(ren, surf);
-    SDL_Rect text_rect = { 10, 10, surf->w, surf->h };
+    SDL_Rect text_rect = {WINDOW_WIDTH*2/7, WINDOW_HEIGHT/2, surf->w, surf->h };
     SDL_FreeSurface(surf);
+    // Second text that prints in the end of the game.
+    SDL_Surface *surf2 = TTF_RenderText_Solid(font, "Game over! Press Q to quit, R to play again.", (SDL_Color){255,255,255,255});
+    SDL_Texture *text_tex2 = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_Rect text_rect2 = {WINDOW_WIDTH*2/9, WINDOW_HEIGHT/2, surf2->w, surf2->h };
+    SDL_FreeSurface(surf2);
 
     // Value to store velocity added when pressing `space`
     float sq_vel = 0;
 
     int frame = 0;
-    int running = 1;
+    bool running = true;
     bool start = false;
     bool finish = false;
     SDL_Event e;
@@ -135,6 +163,20 @@ int main(int argc, char *argv[]) {
                         sq_vel += 16.0;
                       };
                       start = true;
+                      break;
+                    case 'q':
+                      if (finish) {
+                        running = false;
+                      }
+                      break;
+                    case 'r':
+                      if (finish) {
+                        cube_init(&sq.x, &sq.y);
+                        tube_init(&tube1a.x, &tube1a.y, &tube1b.x, &tube1b.y, &tube2a.x, &tube2a.y, &tube2b.x, &tube2b.y, &tube3a.x, &tube3a.y, &tube3b.x, &tube3b.y);
+                        start = false;
+                        finish = false;
+                        collided = false;
+                      }
                       break;
                     default: 
                       break;
@@ -207,7 +249,7 @@ int main(int argc, char *argv[]) {
           collision(sq.x, sq.y, tube3b.x, tube3b.y, &collided);
 
           if (collided) {
-            break;
+            finish = true;
           }
           
           // render
@@ -227,7 +269,14 @@ int main(int argc, char *argv[]) {
 
           SDL_RenderPresent(ren);
         }
-        
+
+        if (start && finish) {
+          SDL_SetRenderDrawColor(ren, 0, 144, 48, 255);  // green background
+          SDL_RenderClear(ren);
+
+          SDL_RenderCopy(ren, text_tex2, NULL, &text_rect2); // Render the text
+          SDL_RenderPresent(ren);
+        }
     }
 
     SDL_DestroyTexture(text_tex);
