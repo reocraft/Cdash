@@ -27,10 +27,17 @@ void collision (int cube_x, int cube_y, int tube_x, int tube_y, bool* collided) 
   }
 }
 
+void countScore (int cube_x, int tube_x, int* score) {
+  if (cube_x - tube_x <= 1 && cube_x - tube_x >= 0) {
+    *score += 1;
+  }
+}
+
+
 // Functions that resets tube positions back to start of game.
 void tube_init (int* tube1ax, int* tube1ay, int* tube1bx, int* tube1by, int* tube2ax, int* tube2ay, int* tube2bx, int* tube2by, int* tube3ax, int* tube3ay, int* tube3bx, int* tube3by) {
     // Obstacle tubes
-    *tube1ax = *tube1bx = WINDOW_WIDTH - SQUARE_SIZE + 267;
+    *tube1ax = *tube1bx = WINDOW_WIDTH - SQUARE_SIZE + 283;
     *tube1ay = -300;
     *tube1by = *tube1ay + 600;
 
@@ -38,7 +45,7 @@ void tube_init (int* tube1ax, int* tube1ay, int* tube1bx, int* tube1by, int* tub
     *tube2ay = -150;
     *tube2by = *tube2ay + 600;
 
-    *tube3ax = *tube3bx = WINDOW_WIDTH - SQUARE_SIZE + 534;
+    *tube3ax = *tube3bx = WINDOW_WIDTH - SQUARE_SIZE + 567;
     *tube3ay = 0;
     *tube3by = *tube3ay + 600;
 }
@@ -134,11 +141,11 @@ int main(int argc, char *argv[]) {
     // First text that prints in the beginning of the game.
     SDL_Surface *surf = TTF_RenderText_Solid(font, "Press space to start the game!", (SDL_Color){255,255,255,255});
     SDL_Texture *text_tex = SDL_CreateTextureFromSurface(ren, surf);
-    SDL_Rect text_rect = {WINDOW_WIDTH*2/7, WINDOW_HEIGHT/2, surf->w, surf->h };
+    SDL_Rect text_rect = {WINDOW_WIDTH*2/7, WINDOW_HEIGHT/2, surf->w, surf->h};
     SDL_FreeSurface(surf);
     // Second text that prints in the end of the game.
     SDL_Surface *surf2 = TTF_RenderText_Solid(font, "Game over! Press Q to quit, R to play again.", (SDL_Color){255,255,255,255});
-    SDL_Texture *text_tex2 = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_Texture *text_tex2 = SDL_CreateTextureFromSurface(ren, surf2);
     SDL_Rect text_rect2 = {WINDOW_WIDTH*2/9, WINDOW_HEIGHT/2, surf2->w, surf2->h };
     SDL_FreeSurface(surf2);
 
@@ -146,6 +153,8 @@ int main(int argc, char *argv[]) {
     float sq_vel = 0;
 
     int frame = 0;
+    int score = 0;
+    int highscore = 0;
     bool running = true;
     bool start = false;
     bool finish = false;
@@ -176,6 +185,8 @@ int main(int argc, char *argv[]) {
                         start = false;
                         finish = false;
                         collided = false;
+                        sq_vel = 0;
+                        score = 0;
                       }
                       break;
                     default: 
@@ -195,7 +206,7 @@ int main(int argc, char *argv[]) {
           // Gravity like effect of cube falling down
           sq.y -= sq_vel;
           sq.y += 5;
-          if (sq_vel > 13) {
+          if (sq_vel >= 13) {
             sq_vel -= 0.5;
           }
           else if (sq_vel > 0) {
@@ -209,32 +220,36 @@ int main(int argc, char *argv[]) {
           if (sq.y < 0) {
             sq.y = 0;
           } 
-          if (sq.x > WINDOW_WIDTH  - SQUARE_SIZE)
-              sq.x = WINDOW_WIDTH  - SQUARE_SIZE;
-          if (sq.y > WINDOW_HEIGHT - SQUARE_SIZE)
-              sq.y = WINDOW_HEIGHT - SQUARE_SIZE;
+          if (sq.x > WINDOW_WIDTH  - SQUARE_SIZE) {
+            sq.x = WINDOW_WIDTH  - SQUARE_SIZE;
+          }
+          if (sq.y > WINDOW_HEIGHT - SQUARE_SIZE) {
+            sq.y = WINDOW_HEIGHT - SQUARE_SIZE;
+            sq_vel = 0;
+          }
 
 
-          tube1a.x -= 1.3;
-          tube1b.x -= 1.3;
-          tube2a.x -= 1.3;
-          tube2b.x -= 1.3;
-          tube3a.x -= 1.3;
-          tube3b.x -= 1.3;
+
+          tube1a.x -= 2;
+          tube1b.x -= 2;
+          tube2a.x -= 2;
+          tube2b.x -= 2;
+          tube3a.x -= 2;
+          tube3b.x -= 2;
 
 
           // When the tubes go off the screen, respawns a new tube.
-          if (tube1a.x <= 0) {
+          if (tube1a.x <= -SQUARE_SIZE) {
             respawn(&tube1a.x, &tube1a.y);
             tube1b.x = tube1a.x;
             tube1b.y = tube1a.y + 600;
           }
-          if (tube2a.x <= 0) {
+          if (tube2a.x <= -SQUARE_SIZE) {
             respawn(&tube2a.x, &tube2a.y);
             tube2b.x = tube2a.x;
             tube2b.y = tube2a.y + 600;
           }
-          if (tube3a.x <= 0) {
+          if (tube3a.x <= -SQUARE_SIZE) {
             respawn(&tube3a.x, &tube3a.y);
             tube3b.x = tube3a.x;
             tube3b.y = tube3a.y + 600;
@@ -250,6 +265,17 @@ int main(int argc, char *argv[]) {
 
           if (collided) {
             finish = true;
+            continue; // Makes sure to end loop here so that an extra point wouldn't be counted.
+          }
+
+          // Count the scores when they go through the tubes
+          countScore(sq.x, tube1a.x, &score);
+          countScore(sq.x, tube2a.x, &score);
+          countScore(sq.x, tube3a.x, &score);
+
+          // Update highscore
+          if (score > highscore) {
+            highscore = score;
           }
           
           // render
@@ -275,6 +301,16 @@ int main(int argc, char *argv[]) {
           SDL_RenderClear(ren);
 
           SDL_RenderCopy(ren, text_tex2, NULL, &text_rect2); // Render the text
+          SDL_RenderPresent(ren);
+
+          char buf[64];
+          snprintf(buf, sizeof(buf), "Current score: %d  High score: %d", score, highscore);
+          SDL_Surface *surf3 = TTF_RenderText_Solid(font, buf, (SDL_Color){255,255,255,255});
+          SDL_Texture *tex3 = SDL_CreateTextureFromSurface(ren, surf3);
+          SDL_Rect dst3 = {10, 40, surf3->w, surf3->h};
+          SDL_FreeSurface(surf3);
+          SDL_RenderCopy(ren, tex3, NULL, &dst3);
+          SDL_DestroyTexture(tex3);
           SDL_RenderPresent(ren);
         }
     }
